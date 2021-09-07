@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace WindowsFormsApp2
+namespace LinkStreamInVLC
 {
     static class Program
     {

@@ -1,15 +1,13 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 
-namespace WindowsFormsApp2
+namespace LinkStreamInVLC
 {
     public partial class Form1 : Form
     {
@@ -17,6 +15,8 @@ namespace WindowsFormsApp2
         private bool dragging = false;
         private Point dragCursorPoint;
         private Point dragFormPoint;
+        private List<SavedLink> links = new List<SavedLink>();
+
         public Form1()
         {
             InitializeComponent();
@@ -24,7 +24,7 @@ namespace WindowsFormsApp2
 
         private void button1_Click(object sender, EventArgs e)
         {
-            string filePath = Path.GetTempPath() + "streaming.strm";
+            string filePath = Path.GetTempPath() + "LinkStreamVLC.strm";
 
             if(string.IsNullOrEmpty(textBox1.Text))
             {
@@ -32,19 +32,7 @@ namespace WindowsFormsApp2
                 return;
             }
 
-            if (!File.Exists(filePath))
-            {
-                File.Create(filePath).Close();
-                TextWriter tw = new StreamWriter(filePath);
-                tw.Write(textBox1.Text);
-                tw.Close();
-            }
-            else if (File.Exists(filePath))
-            {
-                TextWriter tw = new StreamWriter(filePath);
-                tw.Write(textBox1.Text);
-                tw.Close();
-            }
+            _saveLink(filePath);
 
             try
             {
@@ -53,6 +41,25 @@ namespace WindowsFormsApp2
             catch
             {
                 MessageBox.Show("Install VLC Player.", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void _saveLink(string _filePath)
+        {
+            SavedLink _link = new SavedLink();
+
+            if (!File.Exists(_filePath))
+            {
+                File.Create(_filePath).Close();
+                StreamWriter sw = new StreamWriter(_filePath);
+                sw.Write(textBox1.Text);
+                sw.Close();
+            }
+            else if (File.Exists(_filePath))
+            {
+                TextWriter tw = new StreamWriter(_filePath);
+                tw.Write(textBox1.Text);
+                tw.Close();
             }
         }
 
@@ -70,7 +77,7 @@ namespace WindowsFormsApp2
                                 + "N.B.: \n1. VLC player need to be installed in your computer.\n"
                                 + "2. File name must be included in the link.\n\n"
                                 + "Enjoy ... ツ - Navid\n\n"
-                                + "A Sample video ink has been pasted into the Link textbox now you can open it in VLC player.\n\n"
+                                + "A Sample video ink has been pasted into the Link textbox. Now you can open it in VLC player.\n\n"
                                 + "**This app is completely free. Feel free to share with others.", "Help");
 
             Clipboard.SetText("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4");
@@ -110,7 +117,7 @@ namespace WindowsFormsApp2
             System.Windows.Forms.ToolTip ToolTip1 = new System.Windows.Forms.ToolTip();
             ToolTip1.SetToolTip(this.button5, "Paste From Clipboard");
 
-            string filePath = Path.GetTempPath() + "streaming.strm";
+            string filePath = Path.GetTempPath() + "LinkStreamVLC.strm";
             if (File.Exists(filePath))
             {
                 StreamReader tr = new StreamReader(filePath);
@@ -122,6 +129,80 @@ namespace WindowsFormsApp2
         private void button5_Click(object sender, EventArgs e)
         {
             textBox1.Text = Clipboard.GetText();
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            if (panel1.Height == 26)
+            {
+                panel1.Height = 80;
+            }
+            else
+            {
+                panel1.Height = 26;
+            }
+        }
+
+        private void button7_Click(object sender, EventArgs e)
+        {
+            SavedLink _link = new SavedLink();
+            string rawJSON = "[]";
+            string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SavedLinkStream.VLC");
+            List<SavedLink> _links = new List<SavedLink>();
+
+            if (File.Exists(filePath))
+            {
+                StreamReader tr = new StreamReader(filePath);
+                rawJSON = tr.ReadToEnd();
+                tr.Close();
+            }
+            else
+            {
+                File.Create(filePath).Close();
+                StreamWriter sw = new StreamWriter(filePath);
+                sw.Write(rawJSON);
+                sw.Close();
+            }
+
+            _links = JsonConvert.DeserializeObject<List<SavedLink>>(rawJSON);
+
+            int id;
+            try
+            {
+                id = _links.Max(l => l.id);
+            }
+            catch
+            {
+                id = 0;
+            }
+            
+
+            _link.id = id + 1;
+            _link.link = textBox1.Text;
+            _link.name = textBox1.Text.Substring(textBox1.Text.LastIndexOf("/")+1);
+            _link.name = _link.name.Replace("%20", " ");
+            _link.savedAt = DateTime.Now;
+            _links.Add(_link);
+
+            string json = JsonConvert.SerializeObject(_links);
+            File.WriteAllText(filePath, json);
+            panel1.Height = 26;
+            MessageBox.Show("Saved Successfully!\n"
+                             +"You can open saved link list and select the link to open in vlc later.");
+        }
+
+        private void button8_Click(object sender, EventArgs e)
+        {
+            LinkListForm l = new LinkListForm();
+            l.ShowDialog();
+            if(!String.IsNullOrEmpty(l.getSelectedLink()))
+                textBox1.Text = l.getSelectedLink();
+            panel1.Height = 26;
+        }
+
+        private void Form1_MouseClick(object sender, MouseEventArgs e)
+        {
+            panel1.Height = 26;
         }
     }
 }
